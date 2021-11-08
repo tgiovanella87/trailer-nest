@@ -1,34 +1,45 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import { MovieService } from './movie.service';
-import { CreateMovieDto } from './dto/create-movie.dto';
-import { UpdateMovieDto } from './dto/update-movie.dto';
+import { TmdbService } from '../tmdb/tmdb.service';
 
 @Controller('movie')
 export class MovieController {
-  constructor(private readonly movieService: MovieService) {}
+  constructor(
+    private readonly movieService: MovieService,
+    private readonly tmdbService: TmdbService,
+  ) {}
 
   @Post()
-  create(@Body() createMovieDto: CreateMovieDto) {
-    return this.movieService.create(createMovieDto);
-  }
+  async retrieveMovieDataByUrl(@Body() movieData: any) {
+    if (movieData.url.lastIndexOf('/') >= movieData.url.length - 1) {
+      return {
+        error: true,
+        message: 'There is no movie name on the informed URL',
+      };
+    }
 
-  @Get()
-  findAll() {
-    return this.movieService.findAll();
-  }
+    const movieName = movieData.url.substring(
+      movieData.url.lastIndexOf('/') + 1,
+    );
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.movieService.findOne(+id);
-  }
+    const responseData: any = await this.movieService.retrieveMovieData(
+      movieName,
+    );
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateMovieDto: UpdateMovieDto) {
-    return this.movieService.update(+id, updateMovieDto);
-  }
+    console.info(movieName);
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.movieService.remove(+id);
+    const viapayMovieData: any = await this.tmdbService.retrieveIdByMovieCode(
+      responseData.data.id,
+    );
+
+    console.info('movieID', responseData.data.id);
+
+    const trailerData = await this.tmdbService.retrieveMovieTrailer(
+      viapayMovieData.data.id,
+    );
+    console.info('movieData', viapayMovieData.data.id);
+    console.info('trailerID', trailerData.data.id);
+
+    return trailerData;
   }
 }

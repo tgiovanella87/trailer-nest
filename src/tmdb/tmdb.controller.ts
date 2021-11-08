@@ -1,15 +1,5 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-} from '@nestjs/common';
+import { Controller, Get, Param } from '@nestjs/common';
 import { TmdbService } from './tmdb.service';
-import { CreateTmdbDto } from './dto/create-tmdb.dto';
-import { UpdateTmdbDto } from './dto/update-imdb.dto';
 
 @Controller('tmdb')
 export class TmdbController {

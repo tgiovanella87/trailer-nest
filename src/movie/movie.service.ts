@@ -1,26 +1,47 @@
-import { Injectable } from '@nestjs/common';
-import { CreateMovieDto } from './dto/create-movie.dto';
-import { UpdateMovieDto } from './dto/update-movie.dto';
+import { CACHE_MANAGER, Inject, Injectable } from '@nestjs/common';
+import axios from 'axios';
 
 @Injectable()
 export class MovieService {
-  create(createMovieDto: CreateMovieDto) {
-    return 'This action adds a new movie';
-  }
+  constructor(@Inject(CACHE_MANAGER) private cacheManager) {}
 
-  findAll() {
-    return `This action returns all movie`;
-  }
+  async retrieveMovieData(movieName: string) {
+    const movieUrl = `${process.env.MOVIE_URL}/${movieName}`;
 
-  findOne(id: number) {
-    return `This action returns a #${id} movie`;
-  }
+    return new Promise(async (resolve, reject) => {
+      const cachedData = await this.cacheManager.get(
+        `viapay_movie_${movieName}`,
+      );
 
-  update(id: number, updateMovieDto: UpdateMovieDto) {
-    return `This action updates a #${id} movie`;
-  }
+      if (cachedData) {
+        resolve({ error: false, data: cachedData });
+        return;
+      }
 
-  remove(id: number) {
-    return `This action removes a #${id} movie`;
+      axios
+        .get(movieUrl, {})
+        .then((responseData: any) => {
+          const returnTarget =
+            responseData.data._embedded['viaplay:blocks'][0]._embedded[
+              'viaplay:product'
+            ].content.imdb;
+
+          if (!returnTarget) {
+            resolve({
+              error: true,
+              data: { error: true, message: 'Incorrect request' },
+            });
+            return;
+          }
+
+          this.cacheManager.set(`viapay_movie_${movieName}`, returnTarget, {
+            ttl: 60000,
+          });
+          resolve({ error: false, data: returnTarget });
+        })
+        .catch((error) => {
+          reject({ error: true, message: error });
+        });
+    });
   }
 }
