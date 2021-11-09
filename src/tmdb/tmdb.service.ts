@@ -61,7 +61,7 @@ export class TmdbService {
             name: trailerNode.name,
             type: trailerNode.type,
             official: trailerNode.official,
-            youtube: `https://www.youtube.com/watch?v=${trailerNode.key}`,
+            trailer_url: `https://www.youtube.com/watch?v=${trailerNode.key}`,
           };
           resolve({ error: false, data: trailerResultData });
         })

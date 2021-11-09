@@ -11,7 +11,7 @@ export class TmdbController {
   }
 
   @Get('movie-trailer/:movieId')
-  async findByMovieId(@Param('movieId') movieId: string) {
+  async findByMovieTrailer(@Param('movieId') movieId: string) {
     return await this.tmdbService.retrieveMovieTrailer(movieId);
   }
 }
