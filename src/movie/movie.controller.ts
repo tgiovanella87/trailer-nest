@@ -1,12 +1,14 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, CACHE_MANAGER, Inject } from '@nestjs/common';
 import { MovieService } from './movie.service';
 import { TmdbService } from '../tmdb/tmdb.service';
+import { Cache } from 'cache-manager';
 
 @Controller('movie')
 export class MovieController {
   constructor(
     private readonly movieService: MovieService,
     private readonly tmdbService: TmdbService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   @Post()
@@ -22,23 +24,28 @@ export class MovieController {
       movieData.url.lastIndexOf('/') + 1,
     );
 
+    const cachedMovie = await this.cacheManager.store.get(`movie_${movieName}`);
+    console.info(`movie_${movieName}`, cachedMovie);
+
+    if (cachedMovie) {
+      return { error: false, data: cachedMovie };
+    }
+
     const responseData: any = await this.movieService.retrieveMovieData(
       movieName,
     );
-
-    console.info(movieName);
 
     const viapayMovieData: any = await this.tmdbService.retrieveIdByMovieCode(
       responseData.data.id,
     );
 
-    console.info('movieID', responseData.data.id);
-
     const trailerData = await this.tmdbService.retrieveMovieTrailer(
       viapayMovieData.data.id,
     );
-    console.info('movieData', viapayMovieData.data.id);
-    console.info('trailerID', trailerData.data.id);
+
+    await this.cacheManager.store.set(`movie_${movieName}`, trailerData.data, {
+      ttl: 30000,
+    });
 
     return trailerData;
   }

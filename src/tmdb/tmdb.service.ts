@@ -1,43 +1,18 @@
-import { CACHE_MANAGER, Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 
 @Injectable()
 export class TmdbService {
-  findUrl: string;
-  viewUrl: string;
-
-  constructor(@Inject(CACHE_MANAGER) private cacheManager) {
-    this.findUrl = process.env.TMDB_FIND_URL;
-    this.viewUrl = process.env.TMDB_VIEW_URL;
-
-    this.findUrl = this.findUrl.replace(
-      '{{API_KEY}}',
-      process.env.TMDB_API_KEY,
-    );
-
-    this.viewUrl = this.viewUrl.replace(
-      '{{API_KEY}}',
-      process.env.TMDB_API_KEY,
-    );
-  }
-
   async retrieveIdByMovieCode(movieCode: string): Promise<any> {
-    console.info('recebido', movieCode);
-    console.info(`movie_code_${movieCode}`);
-
-    this.findUrl = this.findUrl.replace('{{MOVIE_CODE}}', movieCode);
+    let findUrl = process.env.TMDB_FIND_URL.replace(
+      '{{API_KEY}}',
+      process.env.TMDB_API_KEY,
+    );
+    findUrl = findUrl.replace('{{MOVIE_CODE}}', movieCode);
 
     return new Promise(async (resolve, reject) => {
-      const cachedData = await this.cacheManager.get(`movie_code_${movieCode}`);
-
-      if (cachedData) {
-        console.log('cached');
-        resolve({ error: false, data: cachedData });
-        return;
-      }
-
       axios
-        .get(this.findUrl, {})
+        .get(findUrl, {})
         .then((responseData: any) => {
           if (!responseData.data.movie_results[0]?.id) {
             resolve({ error: true, message: 'Movie not found' });
@@ -49,9 +24,6 @@ export class TmdbService {
             id: movieResultData.id,
             title: movieResultData.title,
           };
-          this.cacheManager.set(`movie_code_${movieCode}`, movieData, {
-            ttl: 60000,
-          });
 
           resolve({
             error: false,
@@ -65,18 +37,15 @@ export class TmdbService {
   }
 
   async retrieveMovieTrailer(movieID: string): Promise<any> {
-    this.viewUrl = this.viewUrl.replace('{{MOVIE_ID}}', movieID);
+    let viewUrl = process.env.TMDB_VIEW_URL.replace(
+      '{{API_KEY}}',
+      process.env.TMDB_API_KEY,
+    );
+    viewUrl = viewUrl.replace('{{MOVIE_ID}}', movieID);
 
     return new Promise(async (resolve, reject) => {
-      const cachedData = await this.cacheManager.get(`movie_id_${movieID}`);
-
-      if (cachedData) {
-        resolve({ error: false, data: cachedData });
-        return;
-      }
-
       axios
-        .get(this.viewUrl, {})
+        .get(viewUrl, {})
         .then((responseData: any) => {
           const trailerNode = responseData.data.results.find(
             (item) => (item.type = 'Trailer'),
@@ -94,10 +63,6 @@ export class TmdbService {
             official: trailerNode.official,
             youtube: `https://www.youtube.com/watch?v=${trailerNode.key}`,
           };
-
-          this.cacheManager.set(`movie_id_${movieID}`, trailerResultData, {
-            ttl: 60000,
-          });
           resolve({ error: false, data: trailerResultData });
         })
         .catch((error) => {
